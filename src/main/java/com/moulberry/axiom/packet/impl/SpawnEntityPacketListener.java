@@ -98,13 +98,14 @@ public class SpawnEntityPacketListener implements PacketHandler {
             if (!tag.contains("id")) continue;
 
             AtomicBoolean useNewUuid = new AtomicBoolean(true);
+            final var tagFinal = tag;
 
             AxiomPaper.threadingBridge.runForWorldChunk(
                 world,
                 spawnPos.getX() >> 4,
                 spawnPos.getZ() >> 4,
                 () -> {
-                    Entity spawned = EntityType.loadEntityRecursive(tag, serverLevel, EntitySpawnReason.COMMAND, entity -> {
+                    Entity spawned = EntityType.loadEntityRecursive(tagFinal, serverLevel, EntitySpawnReason.COMMAND, entity -> {
                         if (!this.plugin.canEntityBeManipulated(entity.getType())) {
                             return null;
                         }
