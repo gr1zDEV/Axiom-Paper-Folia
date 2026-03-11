@@ -246,8 +246,7 @@ public class SetBlockPacketListener implements PacketHandler {
                     actualBlock.setPlacedBy(player.level(), clickedPos, actualBlockState, player, inHand);
                 }
             }
-            }
-        );
+        });
     }
 
     private static boolean fireBukkitEvents(Player bukkitPlayer, BlockHitResult blockHit, boolean breaking, Map<BlockPos, BlockState> blocks, ServerPlayer player, CraftWorld world, InteractionHand hand) {
