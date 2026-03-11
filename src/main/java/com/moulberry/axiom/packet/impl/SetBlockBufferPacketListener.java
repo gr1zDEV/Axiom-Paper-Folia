@@ -92,7 +92,7 @@ public class SetBlockBufferPacketListener implements PacketHandler {
     }
 
     private void applyBlockBuffer(ServerPlayer player, MinecraftServer server, BlockBuffer buffer, ResourceKey<Level> worldKey, int clientAvailableDispatchSends) {
-        server.execute(() -> {
+        AxiomPaper.threadingBridge.runGlobal(() -> {
             try {
                 if (this.plugin.logLargeBlockBufferChanges()) {
                     this.plugin.getLogger().info("Player " + player.getUUID() + " modified " + buffer.getSectionCount() + " chunk sections (blocks)");
@@ -124,7 +124,7 @@ public class SetBlockBufferPacketListener implements PacketHandler {
     }
 
     private void applyBiomeBuffer(ServerPlayer player, MinecraftServer server, BiomeBuffer biomeBuffer, ResourceKey<Level> worldKey, int clientAvailableDispatchSends) {
-        server.execute(() -> {
+        AxiomPaper.threadingBridge.runGlobal(() -> {
             try {
                 if (this.plugin.logLargeBlockBufferChanges()) {
                     this.plugin.getLogger().info("Player " + player.getUUID() + " modified " + biomeBuffer.getSectionCount() + " chunk sections (biomes)");

@@ -44,7 +44,7 @@ public class UpdateAnnotationPacketListener implements PacketHandler {
         }
 
         // Execute
-        serverPlayer.level().getServer().execute(() -> {
+        AxiomPaper.threadingBridge.runGlobal(() -> {
             try {
                 ServerAnnotations.handleUpdates(serverPlayer.level().getWorld(), actions);
             } catch (Throwable t) {

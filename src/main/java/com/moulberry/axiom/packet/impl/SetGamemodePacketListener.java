@@ -45,7 +45,9 @@ public class SetGamemodePacketListener implements PacketHandler {
         if (gameModeChangeEvent.isCancelled()) return;
 
         // Change gamemode
-        ((CraftPlayer)player).getHandle().setGameMode(gameType);
+        AxiomPaper.threadingBridge.runForPlayer(player, () -> {
+            ((CraftPlayer)player).getHandle().setGameMode(gameType);
+        });
     }
 
 }
