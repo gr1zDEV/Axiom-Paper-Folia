@@ -108,6 +108,7 @@ public class SetBlockPacketListener implements PacketHandler {
 
         BlockPos targetBlockPos = blockHit.getBlockPos();
         BlockPlaceContext blockPlaceContext = new BlockPlaceContext(player, hand, player.getItemInHand(hand), blockHit);
+        final var preventUpdatesAtFinal = preventUpdatesAt;
 
         if ((reason & REASON_REPLACEMODE) == 0 && (reason & REASON_ANGEL) == 0) {
             if (!fireBukkitEvents(bukkitPlayer, blockHit, breaking, blocks, player, world, hand)) {
@@ -122,7 +123,7 @@ public class SetBlockPacketListener implements PacketHandler {
             () -> {
         // Update blocks
         if (updateNeighbors) {
-            if (preventUpdatesAt.isEmpty()) {
+            if (preventUpdatesAtFinal.isEmpty()) {
                 for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
                     BlockPos blockPos = entry.getKey();
                     BlockState blockState = entry.getValue();
@@ -151,7 +152,7 @@ public class SetBlockPacketListener implements PacketHandler {
             } else {
                 Direction[] directions = Direction.values();
                 BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
-                Map<BlockPos, BlockState> delayedSetWithoutUpdates = new LinkedHashMap<>(Math.min(blocks.size(), preventUpdatesAt.size()));
+                Map<BlockPos, BlockState> delayedSetWithoutUpdates = new LinkedHashMap<>(Math.min(blocks.size(), preventUpdatesAtFinal.size()));
                 for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
                     BlockPos blockPos = entry.getKey();
                     BlockState blockState = entry.getValue();
@@ -165,13 +166,13 @@ public class SetBlockPacketListener implements PacketHandler {
                     // but that case is rare enough for it not to matter
                     boolean updateNeighborsForThisBlock = true;
                     for (Direction direction : directions) {
-                        if (preventUpdatesAt.contains(mutable.setWithOffset(blockPos, direction))) {
+                        if (preventUpdatesAtFinal.contains(mutable.setWithOffset(blockPos, direction))) {
                             updateNeighborsForThisBlock = false;
                             break;
                         }
                     }
 
-                    if (preventUpdatesAt.contains(blockPos)) {
+                    if (preventUpdatesAtFinal.contains(blockPos)) {
                         delayedSetWithoutUpdates.put(blockPos, blockState);
                         if (!updateNeighborsForThisBlock) {
                             continue;
