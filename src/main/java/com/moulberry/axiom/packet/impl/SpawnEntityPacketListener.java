@@ -99,52 +99,50 @@ public class SpawnEntityPacketListener implements PacketHandler {
 
             AtomicBoolean useNewUuid = new AtomicBoolean(true);
 
-            Entity spawned = EntityType.loadEntityRecursive(tag, serverLevel, EntitySpawnReason.COMMAND, entity -> {
-                if (!this.plugin.canEntityBeManipulated(entity.getType())) {
-                    return null;
-                }
+            AxiomPaper.threadingBridge.runForWorldChunk(
+                world,
+                spawnPos.getX() >> 4,
+                spawnPos.getZ() >> 4,
+                () -> {
+                    Entity spawned = EntityType.loadEntityRecursive(tag, serverLevel, EntitySpawnReason.COMMAND, entity -> {
+                        if (!this.plugin.canEntityBeManipulated(entity.getType())) {
+                            return null;
+                        }
 
-                if (useNewUuid.getAndSet(false)) {
-                    entity.setUUID(entry.newUuid);
-                } else {
-                    entity.setUUID(UUID.randomUUID());
-                }
+                        if (useNewUuid.getAndSet(false)) {
+                            entity.setUUID(entry.newUuid);
+                        } else {
+                            entity.setUUID(UUID.randomUUID());
+                        }
 
-                if (entity instanceof HangingEntity hangingEntity) {
-                    float changedYaw = entry.yaw - entity.getYRot();
-                    int rotations = Math.round(changedYaw / 90);
-                    hangingEntity.rotate(ROTATION_VALUES[rotations & 3]);
+                        if (entity instanceof HangingEntity hangingEntity) {
+                            float changedYaw = entry.yaw - entity.getYRot();
+                            int rotations = Math.round(changedYaw / 90);
+                            hangingEntity.rotate(ROTATION_VALUES[rotations & 3]);
 
-                    if (entity instanceof ItemFrame itemFrame && itemFrame.getDirection().getAxis() == Direction.Axis.Y) {
-                        itemFrame.setRotation(itemFrame.getRotation() - Math.round(changedYaw / 45));
-                    }
-                }
-
-                entity.snapTo(position.x, position.y, position.z, entry.yaw, entry.pitch);
-                entity.setYHeadRot(entity.getYRot());
-
-                return entity;
-            });
-
-            if (spawned != null) {
-                AxiomPaper.threadingBridge.runForWorldChunk(
-                    world,
-                    spawnPos.getX() >> 4,
-                    spawnPos.getZ() >> 4,
-                    () -> {
-                        if (serverLevel.tryAddFreshEntityWithPassengers(spawned)) {
-                            AxiomSpawnEntityEvent spawnEntityEvent = new AxiomSpawnEntityEvent(player, spawned.getBukkitEntity());
-                            Bukkit.getPluginManager().callEvent(spawnEntityEvent);
-                            if (spawnEntityEvent.isCancelled() || spawned.isRemoved()) {
-                                for (Entity passenger : spawned.getIndirectPassengers()) {
-                                    passenger.discard();
-                                }
-                                spawned.discard();
+                            if (entity instanceof ItemFrame itemFrame && itemFrame.getDirection().getAxis() == Direction.Axis.Y) {
+                                itemFrame.setRotation(itemFrame.getRotation() - Math.round(changedYaw / 45));
                             }
                         }
+
+                        entity.snapTo(position.x, position.y, position.z, entry.yaw, entry.pitch);
+                        entity.setYHeadRot(entity.getYRot());
+
+                        return entity;
+                    });
+
+                    if (spawned != null && serverLevel.tryAddFreshEntityWithPassengers(spawned)) {
+                        AxiomSpawnEntityEvent spawnEntityEvent = new AxiomSpawnEntityEvent(player, spawned.getBukkitEntity());
+                        Bukkit.getPluginManager().callEvent(spawnEntityEvent);
+                        if (spawnEntityEvent.isCancelled() || spawned.isRemoved()) {
+                            for (Entity passenger : spawned.getIndirectPassengers()) {
+                                passenger.discard();
+                            }
+                            spawned.discard();
+                        }
                     }
-                );
-            }
+                }
+            );
         }
     }
 
