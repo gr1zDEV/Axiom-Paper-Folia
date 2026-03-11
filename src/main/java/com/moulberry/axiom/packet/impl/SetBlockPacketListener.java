@@ -106,10 +106,6 @@ public class SetBlockPacketListener implements PacketHandler {
         ServerPlayer player = ((CraftPlayer)bukkitPlayer).getHandle();
         CraftWorld world = player.level().getWorld();
 
-        if (sequenceId >= 0) {
-            player.connection.ackBlockChangesUpTo(sequenceId);
-        }
-
         BlockPos targetBlockPos = blockHit.getBlockPos();
         BlockPlaceContext blockPlaceContext = new BlockPlaceContext(player, hand, player.getItemInHand(hand), blockHit);
 
@@ -209,6 +205,10 @@ public class SetBlockPacketListener implements PacketHandler {
 
                 setWithoutUpdates(bukkitPlayer, blockState, world, blockPos, player);
             }
+        }
+
+        if (sequenceId >= 0) {
+            player.connection.ackBlockChangesUpTo(sequenceId);
         }
 
         if (!breaking) {
