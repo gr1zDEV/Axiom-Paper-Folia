@@ -12,6 +12,7 @@ import com.moulberry.axiom.operations.SetBlockBufferOperation;
 import com.moulberry.axiom.packet.PacketHandler;
 import com.moulberry.axiom.restrictions.AxiomPermission;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -142,8 +143,6 @@ public class SetBlockBufferPacketListener implements PacketHandler {
                     return;
                 }
 
-                Set<LevelChunk> changedChunks = new HashSet<>();
-
                 int minSection = world.getMinSectionY();
                 int maxSection = world.getMaxSectionY();
 
@@ -151,6 +150,11 @@ public class SetBlockBufferPacketListener implements PacketHandler {
                 if (registryOptional.isEmpty()) return;
 
                 Registry<Biome> registry = registryOptional.get();
+
+                record PendingBiomeMutation(int x, int y, int z, Holder<Biome> biomeHolder) {
+                }
+
+                Long2ObjectMap<List<PendingBiomeMutation>> mutationsByChunk = new Long2ObjectOpenHashMap<>();
 
                 biomeBuffer.forEachEntry((x, y, z, biome) -> {
                     int cy = y >> 2;
@@ -160,30 +164,49 @@ public class SetBlockBufferPacketListener implements PacketHandler {
 
                     var holder = registry.get(biome);
                     if (holder.isPresent()) {
-                        LevelChunk chunk = (LevelChunk) world.getChunk(x >> 2, z >> 2, ChunkStatus.FULL, false);
-                        if (chunk == null) return;
-
-                        var section = chunk.getSection(cy - minSection);
-                        PalettedContainer<Holder<Biome>> container = (PalettedContainer<Holder<Biome>>) section.getBiomes();
-
-                        if (!Integration.canPlaceBlock(player.getBukkitEntity(),
-                            new Location(player.getBukkitEntity().getWorld(), (x<<2)+1, (y<<2)+1, (z<<2)+1))) return;
-
-                        container.set(x & 3, y & 3, z & 3, holder.get());
-                        changedChunks.add(chunk);
+                        int chunkX = x >> 2;
+                        int chunkZ = z >> 2;
+                        long chunkKey = ChunkPos.asLong(chunkX, chunkZ);
+                        mutationsByChunk.computeIfAbsent(chunkKey, key -> new ArrayList<>())
+                            .add(new PendingBiomeMutation(x, y, z, holder.get()));
                     }
                 });
 
                 var chunkMap = world.getChunkSource().chunkMap;
-                HashMap<ServerPlayer, List<LevelChunk>> map = new HashMap<>();
-                for (LevelChunk chunk : changedChunks) {
-                    chunk.markUnsaved();
-                    ChunkPos chunkPos = chunk.getPos();
-                    for (ServerPlayer serverPlayer2 : chunkMap.getPlayers(chunkPos, false)) {
-                        map.computeIfAbsent(serverPlayer2, serverPlayer -> new ArrayList<>()).add(chunk);
-                    }
+                for (Long2ObjectMap.Entry<List<PendingBiomeMutation>> chunkEntry : mutationsByChunk.long2ObjectEntrySet()) {
+                    long chunkKey = chunkEntry.getLongKey();
+                    int chunkX = ChunkPos.getX(chunkKey);
+                    int chunkZ = ChunkPos.getZ(chunkKey);
+                    List<PendingBiomeMutation> mutations = chunkEntry.getValue();
+
+                    AxiomPaper.threadingBridge.runForWorldChunk(world.getWorld(), chunkX, chunkZ, () -> {
+                        LevelChunk chunk = (LevelChunk) world.getChunk(chunkX, chunkZ, ChunkStatus.FULL, false);
+                        if (chunk == null) {
+                            return;
+                        }
+
+                        for (PendingBiomeMutation mutation : mutations) {
+                            if (!Integration.canPlaceBlock(player.getBukkitEntity(),
+                                new Location(player.getBukkitEntity().getWorld(), (mutation.x() << 2) + 1, (mutation.y() << 2) + 1,
+                                    (mutation.z() << 2) + 1))) {
+                                continue;
+                            }
+
+                            int cy = mutation.y() >> 2;
+                            var section = chunk.getSection(cy - minSection);
+                            PalettedContainer<Holder<Biome>> container = (PalettedContainer<Holder<Biome>>) section.getBiomes();
+                            container.set(mutation.x() & 3, mutation.y() & 3, mutation.z() & 3, mutation.biomeHolder());
+                        }
+
+                        chunk.markUnsaved();
+
+                        List<LevelChunk> chunkList = List.of(chunk);
+                        ChunkPos chunkPos = chunk.getPos();
+                        for (ServerPlayer serverPlayer2 : chunkMap.getPlayers(chunkPos, false)) {
+                            serverPlayer2.connection.send(ClientboundChunksBiomesPacket.forChunks(chunkList));
+                        }
+                    });
                 }
-                map.forEach((serverPlayer, list) -> serverPlayer.connection.send(ClientboundChunksBiomesPacket.forChunks(list)));
             } catch (Throwable t) {
                 player.getBukkitEntity().kick(net.kyori.adventure.text.Component.text("An error occured while processing biome change: " + t.getMessage()));
             }
