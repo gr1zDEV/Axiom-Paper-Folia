@@ -76,7 +76,7 @@ public class AxiomBigPayloadHandler extends MessageToMessageDecoder<ByteBuf> {
                     } else {
                         byte[] bytes = ByteBufUtil.getBytes(buf);
 
-                        player.level().getServer().execute(() -> {
+                        AxiomPaper.threadingBridge.runGlobal(() -> {
                             RegistryFriendlyByteBuf friendlyByteBuf = new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(bytes), player.registryAccess());
                             callReceive(handler, player, friendlyByteBuf, identifier);
                         });

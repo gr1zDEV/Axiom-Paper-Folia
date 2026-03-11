@@ -67,7 +67,9 @@ public class TeleportPacketListener implements PacketHandler {
         if (teleportEvent.isCancelled()) return;
 
         // Do teleport
-        player.teleport(new Location(world, x, y, z, yRot, xRot));
+        AxiomPaper.threadingBridge.runForPlayer(player, () -> {
+            player.teleport(new Location(world, x, y, z, yRot, xRot));
+        });
     }
 
 }

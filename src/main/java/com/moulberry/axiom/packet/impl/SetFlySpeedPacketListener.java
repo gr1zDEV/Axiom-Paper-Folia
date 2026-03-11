@@ -37,7 +37,9 @@ public class SetFlySpeedPacketListener implements PacketHandler {
         if (flySpeedChangeEvent.isCancelled()) return;
 
         // Change flying speed
-        ((CraftPlayer)player).getHandle().getAbilities().setFlyingSpeed(flySpeed);
+        AxiomPaper.threadingBridge.runForPlayer(player, () -> {
+            ((CraftPlayer)player).getHandle().getAbilities().setFlyingSpeed(flySpeed);
+        });
     }
 
 }

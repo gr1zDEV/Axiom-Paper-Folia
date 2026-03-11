@@ -58,7 +58,7 @@ public class WorldExtension {
 
     private final LongSet pendingChunksToSend = new LongOpenHashSet();
     private final LongSet pendingChunksToLight = new LongOpenHashSet();
-    private final Map<UUID, MarkerData> previousMarkerData = new HashMap<>();
+    private final Map<UUID, MarkerData> previousMarkerData = new java.util.concurrent.ConcurrentHashMap<>();
 
     public void sendChunk(int cx, int cz) {
         this.pendingChunksToSend.add(ChunkPos.asLong(cx, cz));

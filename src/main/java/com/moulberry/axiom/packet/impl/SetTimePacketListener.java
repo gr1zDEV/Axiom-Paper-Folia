@@ -58,8 +58,10 @@ public class SetTimePacketListener implements PacketHandler {
         if (timeChangeEvent.isCancelled()) return;
 
         // Change time
-        if (time != null) level.setDayTime(time);
-        if (freezeTime != null) level.getGameRules().set(GameRules.ADVANCE_TIME, !freezeTime, null);
+        AxiomPaper.threadingBridge.runGlobal(() -> {
+            if (time != null) level.setDayTime(time);
+            if (freezeTime != null) level.getGameRules().set(GameRules.ADVANCE_TIME, !freezeTime, null);
+        });
     }
 
 }
