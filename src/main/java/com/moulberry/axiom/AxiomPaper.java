@@ -20,6 +20,10 @@ import com.moulberry.axiom.paperapi.block.ImplServerCustomBlocks;
 import com.moulberry.axiom.restrictions.AxiomPermission;
 import com.moulberry.axiom.restrictions.AxiomPermissionSet;
 import com.moulberry.axiom.restrictions.Restrictions;
+import com.moulberry.axiom.threading.FoliaThreadingBridge;
+import com.moulberry.axiom.threading.FoliaUtil;
+import com.moulberry.axiom.threading.PaperThreadingBridge;
+import com.moulberry.axiom.threading.ThreadingBridge;
 import com.moulberry.axiom.world_properties.server.ServerWorldPropertiesRegistry;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -28,7 +32,6 @@ import io.papermc.paper.event.player.PlayerFailMoveEvent;
 import io.papermc.paper.event.world.WorldGameRuleChangeEvent;
 import io.papermc.paper.network.ChannelInitializeListener;
 import io.papermc.paper.network.ChannelInitializeListenerHolder;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -75,25 +78,26 @@ import java.util.function.IntFunction;
 public class AxiomPaper extends JavaPlugin implements Listener {
 
     public static AxiomPaper PLUGIN; // tsk tsk tsk
+    public static ThreadingBridge threadingBridge;
 
     public final Set<UUID> activeAxiomPlayers = Collections.newSetFromMap(new ConcurrentHashMap<>());
     public final Set<UUID> failedPermissionAxiomPlayers = Collections.newSetFromMap(new ConcurrentHashMap<>());
     public final Map<UUID, Restrictions> playerRestrictions = new ConcurrentHashMap<>();
     public final Map<UUID, IdMapper<BlockState>> playerBlockRegistry = new ConcurrentHashMap<>();
     public final Map<UUID, Integer> playerProtocolVersion = new ConcurrentHashMap<>();
-    private final Map<UUID, AxiomPermissionSet> playerPermissions = new HashMap<>();
-    private final Map<UUID, PlotSquaredIntegration.PlotBounds> lastPlotBoundsForPlayers = new HashMap<>();
-    private final Set<UUID> noPhysicalTriggerPlayers = new HashSet<>();
+    private final Map<UUID, AxiomPermissionSet> playerPermissions = new ConcurrentHashMap<>();
+    private final Map<UUID, PlotSquaredIntegration.PlotBounds> lastPlotBoundsForPlayers = new ConcurrentHashMap<>();
+    private final Set<UUID> noPhysicalTriggerPlayers = ConcurrentHashMap.newKeySet();
     private final OperationQueue operationQueue = new OperationQueue();
-    private final Object2IntOpenHashMap<UUID> availableDispatchSends = new Object2IntOpenHashMap<>();
+    private final Map<UUID, Integer> availableDispatchSends = new ConcurrentHashMap<>();
     public Configuration configuration;
 
     public IdMapper<BlockState> allowedBlockRegistry = null;
     private boolean logLargeBlockBufferChanges = false;
     private int packetCollectionReadLimit = 1024;
     private long maxNbtDecompressLimit = 131072;
-    private final Set<EntityType<?>> whitelistedEntities = new HashSet<>();
-    private final Set<EntityType<?>> blacklistedEntities = new HashSet<>();
+    private final Set<EntityType<?>> whitelistedEntities = ConcurrentHashMap.newKeySet();
+    private final Set<EntityType<?>> blacklistedEntities = ConcurrentHashMap.newKeySet();
 
     private int defaultAllowedDispatchSendsPerSecond = 1024;
     private LinkedHashMap<String, Integer> allowedDispatchSendOverrides = new LinkedHashMap<>();
@@ -120,6 +124,8 @@ public class AxiomPaper extends JavaPlugin implements Listener {
         PLUGIN = this;
 
         AxiomReflection.init();
+
+        threadingBridge = FoliaUtil.isFolia() ? new FoliaThreadingBridge(this) : new PaperThreadingBridge(this);
 
         this.saveDefaultConfig();
         this.configuration = this.getConfig();
@@ -246,7 +252,11 @@ public class AxiomPaper extends JavaPlugin implements Listener {
         } catch (IOException ignored) {}
         ServerHeightmaps.load(heightmapsPath);
 
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::tick, 1, 1);
+        if (FoliaUtil.isFolia()) {
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, t -> this.tick(), 1, 1);
+        } else {
+            Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::tick, 1, 1);
+        }
 
         this.sendMarkers = this.configuration.getBoolean("send-markers");
         this.maxChunkRelightsPerTick = this.configuration.getInt("max-chunk-relights-per-tick");
@@ -507,7 +517,7 @@ public class AxiomPaper extends JavaPlugin implements Listener {
             this.availableDispatchSends.put(player.getUniqueId(), allowedDispatchSendsPerSecond*20);
             sendUpdateAvailableDispatchSends(player, allowedDispatchSendsPerSecond, allowedDispatchSendsPerSecond);
         } else {
-            int previousAllowed20 = this.availableDispatchSends.getInt(player.getUniqueId());
+            int previousAllowed20 = this.availableDispatchSends.getOrDefault(player.getUniqueId(), allowedDispatchSendsPerSecond*20);
             int newAllowed20 = Math.min(allowedDispatchSendsPerSecond*20, previousAllowed20 + allowedDispatchSendsPerSecond);
             this.availableDispatchSends.put(player.getUniqueId(), newAllowed20);
 

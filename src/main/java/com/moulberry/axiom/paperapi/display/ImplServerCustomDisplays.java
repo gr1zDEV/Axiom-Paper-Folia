@@ -19,7 +19,6 @@ import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +29,7 @@ import java.util.Set;
 public class ImplServerCustomDisplays {
 
     private static final Map<Identifier, ImplAxiomCustomDisplay> registeredDisplays = new LinkedHashMap<>();
-    private static final Map<Plugin, List<Identifier>> byPlugin = new HashMap<>();
+    private static final Map<Plugin, List<Identifier>> byPlugin = new java.util.concurrent.ConcurrentHashMap<>();
     private static boolean pendingReregisterAll = false;
     private static boolean hasRegisteredToAPlayer = false;
 

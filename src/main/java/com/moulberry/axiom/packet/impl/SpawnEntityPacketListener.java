@@ -61,18 +61,19 @@ public class SpawnEntityPacketListener implements PacketHandler {
                 buf.readDouble(), buf.readFloat(), buf.readFloat(),
                 buf.readNullable(buffer -> buffer.readUUID()), UnknownVersionHelper.readTagUnknown(buf, player)));
 
-        ServerLevel serverLevel = ((CraftWorld)player.getWorld()).getHandle();
+        org.bukkit.World world = player.getWorld();
+        ServerLevel serverLevel = ((CraftWorld)world).getHandle();
 
         for (SpawnEntry entry : entries) {
             Vec3 position = new Vec3(entry.x, entry.y, entry.z);
 
-            BlockPos blockPos = BlockPos.containing(position);
-            if (!Level.isInSpawnableBounds(blockPos)) {
+            BlockPos spawnPos = BlockPos.containing(position);
+            if (!Level.isInSpawnableBounds(spawnPos)) {
                 continue;
             }
 
-            if (!Integration.canPlaceBlock(player, new Location(player.getWorld(),
-                    blockPos.getX(), blockPos.getY(), blockPos.getZ()))) {
+            if (!Integration.canPlaceBlock(player, new Location(world,
+                    spawnPos.getX(), spawnPos.getY(), spawnPos.getZ()))) {
                 continue;
             }
 
@@ -126,16 +127,23 @@ public class SpawnEntityPacketListener implements PacketHandler {
             });
 
             if (spawned != null) {
-                if (serverLevel.tryAddFreshEntityWithPassengers(spawned)) {
-                    AxiomSpawnEntityEvent spawnEntityEvent = new AxiomSpawnEntityEvent(player, spawned.getBukkitEntity());
-                    Bukkit.getPluginManager().callEvent(spawnEntityEvent);
-                    if (spawnEntityEvent.isCancelled() || spawned.isRemoved()) {
-                        for (Entity passenger : spawned.getIndirectPassengers()) {
-                            passenger.discard();
+                AxiomPaper.threadingBridge.runForWorldChunk(
+                    world,
+                    spawnPos.getX() >> 4,
+                    spawnPos.getZ() >> 4,
+                    () -> {
+                        if (serverLevel.tryAddFreshEntityWithPassengers(spawned)) {
+                            AxiomSpawnEntityEvent spawnEntityEvent = new AxiomSpawnEntityEvent(player, spawned.getBukkitEntity());
+                            Bukkit.getPluginManager().callEvent(spawnEntityEvent);
+                            if (spawnEntityEvent.isCancelled() || spawned.isRemoved()) {
+                                for (Entity passenger : spawned.getIndirectPassengers()) {
+                                    passenger.discard();
+                                }
+                                spawned.discard();
+                            }
                         }
-                        spawned.discard();
                     }
-                }
+                );
             }
         }
     }

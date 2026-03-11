@@ -62,7 +62,9 @@ public class DeleteEntityPacketListener implements PacketHandler {
             Bukkit.getPluginManager().callEvent(removeEntityEvent);
 
             if (!removeEntityEvent.isCancelled()) {
-                entity.remove(Entity.RemovalReason.DISCARDED);
+                AxiomPaper.threadingBridge.runForEntity(entity.getBukkitEntity(), () -> {
+                    entity.remove(Entity.RemovalReason.DISCARDED);
+                });
             }
         }
     }

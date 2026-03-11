@@ -16,7 +16,6 @@ import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,8 +26,8 @@ import java.util.Set;
 public class ImplServerCustomBlocks {
 
     private static final Map<Identifier, ImplAxiomCustomBlock> registeredBlocks = new LinkedHashMap<>();
-    private static final Map<BlockState, Identifier> registeredBlockStates = new HashMap<>();
-    private static final Map<Plugin, List<Identifier>> byPlugin = new HashMap<>();
+    private static final Map<BlockState, Identifier> registeredBlockStates = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<Plugin, List<Identifier>> byPlugin = new java.util.concurrent.ConcurrentHashMap<>();
     private static boolean pendingReregisterAll = false;
     private static boolean hasRegisteredToAPlayer = false;
 
