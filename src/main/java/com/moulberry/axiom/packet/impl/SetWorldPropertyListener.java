@@ -55,7 +55,7 @@ public class SetWorldPropertyListener implements PacketHandler {
 
         ServerWorldPropertyHolder<?> property = registry.getById(id);
         if (property != null && property.getType().getTypeId() == type) {
-            property.update(player, player.getWorld(), data);
+            AxiomPaper.threadingBridge.runGlobal(() -> property.update(player, player.getWorld(), data));
         }
 
         sendAck(player, updateId);
