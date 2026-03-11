@@ -104,11 +104,11 @@ public class ManipulateEntityPacketListener implements PacketHandler {
                 continue;
             }
 
-            Vec3 position = entity.position();
-            BlockPos containing = BlockPos.containing(position.x, position.y, position.z);
+            Vec3 currentPosition = entity.position();
+            BlockPos containingCheck = BlockPos.containing(currentPosition.x, currentPosition.y, currentPosition.z);
 
             if (!Integration.canPlaceBlock(player, new Location(player.getWorld(),
-                    containing.getX(), containing.getY(), containing.getZ()))) {
+                    containingCheck.getX(), containingCheck.getY(), containingCheck.getZ()))) {
                 continue;
             }
 
@@ -116,6 +116,10 @@ public class ManipulateEntityPacketListener implements PacketHandler {
             if (!manipulateEvent.callEvent()) {
                 continue;
             }
+
+            AxiomPaper.threadingBridge.runForEntity(entity.getBukkitEntity(), () -> {
+                Vec3 position = entity.position();
+                BlockPos containing = BlockPos.containing(position.x, position.y, position.z);
 
             if (entry.merge != null && !entry.merge.isEmpty()) {
                 NbtSanitization.sanitizeEntity(entry.merge);
@@ -223,6 +227,7 @@ public class ManipulateEntityPacketListener implements PacketHandler {
 
             AxiomAfterManipulateEntityEvent afterManipulateEvent = new AxiomAfterManipulateEntityEvent(player, entity.getBukkitEntity());
             afterManipulateEvent.callEvent();
+            });
         }
     }
 

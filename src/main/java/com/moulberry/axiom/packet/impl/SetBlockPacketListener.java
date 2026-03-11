@@ -110,6 +110,7 @@ public class SetBlockPacketListener implements PacketHandler {
             player.connection.ackBlockChangesUpTo(sequenceId);
         }
 
+        BlockPos targetBlockPos = blockHit.getBlockPos();
         BlockPlaceContext blockPlaceContext = new BlockPlaceContext(player, hand, player.getItemInHand(hand), blockHit);
 
         if ((reason & REASON_REPLACEMODE) == 0 && (reason & REASON_ANGEL) == 0) {
@@ -118,6 +119,11 @@ public class SetBlockPacketListener implements PacketHandler {
             }
         }
 
+        AxiomPaper.threadingBridge.runForWorldChunk(
+            player.getBukkitEntity().getWorld(),
+            targetBlockPos.getX() >> 4,
+            targetBlockPos.getZ() >> 4,
+            () -> {
         // Update blocks
         if (updateNeighbors) {
             if (preventUpdatesAt.isEmpty()) {
@@ -240,7 +246,8 @@ public class SetBlockPacketListener implements PacketHandler {
                     actualBlock.setPlacedBy(player.level(), clickedPos, actualBlockState, player, inHand);
                 }
             }
-        }
+            }
+        );
     }
 
     private static boolean fireBukkitEvents(Player bukkitPlayer, BlockHitResult blockHit, boolean breaking, Map<BlockPos, BlockState> blocks, ServerPlayer player, CraftWorld world, InteractionHand hand) {

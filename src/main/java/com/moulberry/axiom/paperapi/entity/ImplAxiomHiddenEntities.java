@@ -12,7 +12,6 @@ import org.bukkit.entity.Marker;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +22,7 @@ public class ImplAxiomHiddenEntities {
 
     private static final Set<Marker> hiddenMarkers = Collections.newSetFromMap(new WeakHashMap<>());
     private static final Map<Object, UUID> hiddenDisplays = new WeakHashMap<>();
-    private static final Set<UUID> lastSentHiddenDisplays = new HashSet<>();
+    private static final Set<UUID> lastSentHiddenDisplays = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static boolean resendIgnoredDisplays = false;
     private static boolean hasSentIgnoredDisplaysToAPlayer = false;

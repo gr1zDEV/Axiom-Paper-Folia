@@ -29,7 +29,7 @@ import java.util.*;
 
 public class WorldExtension {
 
-    private static final Map<ResourceKey<Level>, WorldExtension> extensions = new HashMap<>();
+    private static final Map<ResourceKey<Level>, WorldExtension> extensions = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static WorldExtension get(ServerLevel serverLevel) {
         WorldExtension extension = extensions.computeIfAbsent(serverLevel.dimension(), k -> new WorldExtension());
