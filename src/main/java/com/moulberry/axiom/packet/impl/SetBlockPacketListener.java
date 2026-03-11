@@ -246,6 +246,7 @@ public class SetBlockPacketListener implements PacketHandler {
                     actualBlock.setPlacedBy(player.level(), clickedPos, actualBlockState, player, inHand);
                 }
             }
+        }
         });
     }
 
